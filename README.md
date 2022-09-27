@@ -1,4 +1,4 @@
-# router-ddns
+# rddns
 
 Router WAN IP address DDNS
 Based on [NewFuture/DDNS](https://github.com/NewFuture/DDNS)
@@ -26,6 +26,22 @@ You can refer to the [NewFuture/DDNS](https://github.com/NewFuture/DDNS)
 And I added a `router` and `rpwd` to config.json
 
 if you want to change it, please change it in the `config.json` and `scheme.json` file
+
+```
+{
+  "$schema": "https://ddns.newfuture.cc/schema/v2.8.json",
+  "router": "http://192.168.1.1/",
+  "rpwd": "4P04oVUc9123456",
+  "debug": false,
+  "dns": "alidns",
+  "id": "LTAI5tFBt2wHG123416",
+  "token": "C7BZxBQLhGdecipR1255",
+  "index4": "default",
+  "ipv4": "www.XXX.com",
+  "proxy": null,
+  "ttl": null
+}
+```
 
 ## About request router ip
 
