@@ -1,17 +1,14 @@
 services:
   rddns:
     container_name: rddns
-    build:
-      context: .
-      args:
-        PIP_INDEX_URL: ${RDDNS_PIP_INDEX_URL:-https://pypi.org/simple}
+    build: .
     restart: unless-stopped
     ports:
-      - "${RDDNS_BIND_IP:-127.0.0.1}:8080:8080"
+      - "${PORT:-8080}:${PORT:-8080}"
+    environment:
+      PORT: ${PORT:-8080}
     volumes:
       - rddns-data:/data
-    environment:
-      RDDNS_ADMIN_PASSWORD: ${RDDNS_ADMIN_PASSWORD:-admin}
     read_only: true
     tmpfs:
       - /tmp:size=16m,mode=1777

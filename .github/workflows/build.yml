@@ -19,24 +19,24 @@ jobs:
       - uses: actions/checkout@v4
       - run: docker compose config --quiet
       - run: docker compose -f compose.host.yaml config --quiet
-      - run: NAS_IP=192.168.1.20 docker compose -f compose.portainer.yaml config --quiet
+      - run: PORT=18080 docker compose -f compose.portainer.yaml config --quiet
       - run: docker build -t rddns:test .
       - name: Container startup and persistence smoke test
         run: |
           docker volume create rddns-test
-          docker run -d --name rddns -p 127.0.0.1:8080:8080 -v rddns-test:/data -e RDDNS_ADMIN_PASSWORD=admin rddns:test
+          docker run -d --name rddns -p 127.0.0.1:18080:18080 -v rddns-test:/data -e PORT=18080 rddns:test
           for i in $(seq 1 30); do
-            curl -fsS http://127.0.0.1:8080/healthz && break
+            curl -fsS http://127.0.0.1:18080/healthz && break
             sleep 1
           done
-          curl -fsS http://127.0.0.1:8080/healthz
-          test "$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:8080/api/config)" = 401
-          curl -fsS -u admin:admin -X PUT -H 'Content-Type: application/json' -H 'X-RDDNS-Request: 1' -d '{"interval":120}' http://127.0.0.1:8080/api/config
+          curl -fsS http://127.0.0.1:18080/healthz
+          test "$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:18080/api/config)" = 401
+          curl -fsS -u admin:admin -X PUT -H 'Content-Type: application/json' -H 'X-RDDNS-Request: 1' -d '{"interval":120}' http://127.0.0.1:18080/api/config
           docker restart rddns
           for i in $(seq 1 30); do
-            curl -fsS http://127.0.0.1:8080/healthz && break
+            curl -fsS http://127.0.0.1:18080/healthz && break
             sleep 1
           done
-          curl -fsS -u admin:admin http://127.0.0.1:8080/api/config | python -c 'import json,sys; assert json.load(sys.stdin)["interval"] == 120'
+          curl -fsS -u admin:admin http://127.0.0.1:18080/api/config | python -c 'import json,sys; assert json.load(sys.stdin)["interval"] == 120'
           docker rm -f rddns
           docker volume rm rddns-test

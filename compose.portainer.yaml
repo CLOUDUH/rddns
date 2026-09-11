@@ -1,18 +1,11 @@
-# Portainer > Stacks > Add stack > Repository (Docker Standalone on Linux/NAS)
-# Required environment variable: NAS_IP = Docker host's LAN IPv4 address.
 services:
   rddns:
     container_name: rddns
-    build:
-      context: .
-      args:
-        PIP_INDEX_URL: ${RDDNS_PIP_INDEX_URL:-https://pypi.org/simple}
+    build: .
     restart: unless-stopped
     network_mode: host
     environment:
-      RDDNS_HOST: ${NAS_IP:?Set NAS_IP to the Docker host LAN IPv4 address}
-      RDDNS_PORT: ${RDDNS_PORT:-8080}
-      RDDNS_ADMIN_PASSWORD: ${RDDNS_ADMIN_PASSWORD:-admin}
+      PORT: ${PORT:-8080}
     volumes:
       - rddns-data:/data
     read_only: true

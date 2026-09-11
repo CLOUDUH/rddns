@@ -1,22 +1,15 @@
 import hmac
 import os
+from pathlib import Path
 
 from flask import Flask, jsonify, request
-from .config import Store, atomic_write
+from .config import Store
 from .service import Service
 
 
 def create_app(directory=None, admin_password=None, start_worker=True):
-    store = Store(directory or os.environ.get('RDDNS_DATA_DIR', './data'))
-    password = admin_password or os.environ.get('RDDNS_ADMIN_PASSWORD')
-    if not password:
-        password_file = store.path / 'admin-password'
-        if password_file.exists():
-            password = password_file.read_text().strip()
-        else:
-            password = 'admin'
-            atomic_write(password_file, password.encode())
-            print('RDDNS 初始管理账户：admin；初始密码：' + password, flush=True)
+    store = Store(directory or ('/data' if Path('/data').is_dir() else './data'))
+    password = admin_password if admin_password is not None else 'admin'
     if password != 'admin' and len(password) < 12:
         raise ValueError('自定义管理密码至少需要 12 个字符（默认 admin 除外）')
     service = Service(store)
@@ -97,8 +90,11 @@ def create_app(directory=None, admin_password=None, start_worker=True):
 
 def main():
     from waitress import serve
+    port = int(os.environ.get('PORT', '8080'))
+    if not 1 <= port <= 65535:
+        raise ValueError('PORT 必须为 1–65535 的整数')
     app = create_app()
-    serve(app, host=os.environ.get('RDDNS_HOST','0.0.0.0'), port=int(os.environ.get('RDDNS_PORT','8080')),
+    serve(app, host='0.0.0.0', port=port,
           threads=6, clear_untrusted_proxy_headers=True)
 
 

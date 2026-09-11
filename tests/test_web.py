@@ -299,36 +299,56 @@ def basic(password):
     return {'Authorization': 'Basic ' + base64.b64encode(('admin:' + password).encode()).decode()}
 
 
-def test_default_admin_password_persists(tmp_path, monkeypatch):
-    monkeypatch.delenv('RDDNS_ADMIN_PASSWORD', raising=False)
+def test_default_admin_password(tmp_path):
     app = create_app(tmp_path, start_worker=False)
     assert app.test_client().get('/api/config', headers=basic('admin')).status_code == 200
     assert app.test_client().get('/api/config', headers=basic('wrong')).status_code == 401
-    assert (tmp_path/'admin-password').read_text() == 'admin'
-    restarted = create_app(tmp_path, start_worker=False)
-    assert restarted.test_client().get('/api/config', headers=basic('admin')).status_code == 200
+    assert not (tmp_path/'admin-password').exists()
 
 
-def test_env_admin_overrides_old_password_without_losing_config(tmp_path, monkeypatch):
+def test_upgrade_ignores_old_password_but_preserves_config(tmp_path, monkeypatch):
     store = Store(tmp_path)
     store.save(configured())
     (tmp_path/'admin-password').write_text('previous-random-password')
-    monkeypatch.setenv('RDDNS_ADMIN_PASSWORD', 'admin')
+    monkeypatch.setenv('RDDNS_ADMIN_PASSWORD', 'previous-env-password')
     app = create_app(tmp_path, start_worker=False)
     client = app.test_client()
     assert client.get('/api/config', headers=basic('admin')).status_code == 200
     assert client.get('/api/config', headers=basic('previous-random-password')).status_code == 401
+    assert client.get('/api/config', headers=basic('previous-env-password')).status_code == 401
     assert app.extensions['rddns'].store.config['access_secret'] == 'test-secret'
-
-
-def test_direct_run_preserves_existing_password(tmp_path, monkeypatch):
-    monkeypatch.delenv('RDDNS_ADMIN_PASSWORD', raising=False)
-    (tmp_path/'admin-password').write_text('previous-random-password')
-    app = create_app(tmp_path, start_worker=False)
-    assert app.test_client().get('/api/config', headers=basic('previous-random-password')).status_code == 200
-    assert app.test_client().get('/api/config', headers=basic('admin')).status_code == 401
+    assert (tmp_path/'admin-password').read_text() == 'previous-random-password'
 
 
 def test_short_custom_password_rejected(tmp_path):
     with pytest.raises(ValueError, match='自定义管理密码'):
         create_app(tmp_path, admin_password='short', start_worker=False)
+
+
+@pytest.mark.parametrize('value,expected', [(None,8080),('18080',18080)])
+def test_server_uses_only_port(monkeypatch,value,expected):
+    from rddns_web.app import main
+    monkeypatch.delenv('PORT',raising=False)
+    if value is not None:
+        monkeypatch.setenv('PORT',value)
+    monkeypatch.setenv('RDDNS_PORT','9999')
+    monkeypatch.setenv('RDDNS_HOST','192.168.1.99')
+    app = Mock()
+    monkeypatch.setattr('rddns_web.app.create_app',Mock(return_value=app))
+    serve = Mock()
+    monkeypatch.setattr('waitress.serve',serve)
+    main()
+    assert serve.call_args.args == (app,)
+    assert serve.call_args.kwargs['port'] == expected
+    assert serve.call_args.kwargs['host'] == '0.0.0.0'
+
+
+@pytest.mark.parametrize('value',['0','65536','invalid'])
+def test_invalid_port_fails_before_starting_worker(monkeypatch,value):
+    from rddns_web.app import main
+    monkeypatch.setenv('PORT',value)
+    factory=Mock()
+    monkeypatch.setattr('rddns_web.app.create_app',factory)
+    with pytest.raises(ValueError):
+        main()
+    factory.assert_not_called()
