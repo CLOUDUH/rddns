@@ -21,15 +21,23 @@
 
 公开仓库无需开启 Git 身份验证。在 Environment variables 中添加 `NAS_IP`，值为 **Docker 主机的局域网 IPv4 地址**（不是路由器地址），例如 `192.168.1.20`。
 
-可选变量：`RDDNS_PORT`（默认 8080，端口冲突可改为 18080）、`RDDNS_ADMIN_PASSWORD`（至少 12 字符；不填则生成）、`RDDNS_PIP_INDEX_URL`（PyPI 下载失败时可设为 `https://pypi.tuna.tsinghua.edu.cn/simple`）。
+可选变量：`RDDNS_PORT`（默认 8080，端口冲突可改为 18080）、`RDDNS_ADMIN_PASSWORD`（默认 `admin`；其他自定义密码至少 12 字符）、`RDDNS_PIP_INDEX_URL`（PyPI 下载失败时可设为 `https://pypi.tuna.tsinghua.edu.cn/simple`）。
 
 点击 **Deploy the stack** 后，Portainer 会拉取仓库并在目标 Docker 环境构建镜像。首次构建需要主机能够访问 GitHub、Docker Hub 和 Python 包源。此方式不需要预先上传本地镜像；不要只把 Compose 内容粘贴到 Web editor，因为构建需要同仓库的源码。
 
-启动后在容器 Logs 中查看自动生成的初始密码，访问 `http://NAS_IP:RDDNS_PORT`，用户名为 `admin`。此配置使用 host 网络，无需端口映射；仅监听指定 NAS 地址。先测试取址，再填写 DNS 配置并启用同步。
+启动后访问 `http://NAS_IP:RDDNS_PORT`，默认用户名和密码均为 `admin`，容器名称固定为 `rddns`。此配置使用 host 网络，无需端口映射；仅监听指定 NAS 地址。先测试取址，再填写 DNS 配置并启用同步。
 
 更新时在同一个 Stack 内拉取仓库并重新构建/部署，保留其数据卷。暂不适用于 Swarm：Swarm 不执行 Compose 的 `build`。Portainer 版本若不支持从 Git 构建，使用下方 Docker 构建流程后以本地镜像部署。
 
 官方入口说明：[Portainer Git repository stacks](https://docs.portainer.io/user/docker/stacks/add#option-3-git-repository)。
+
+### 更新已有 Portainer Stack
+
+进入原来的 `rddns` Stack，保持 Git 分支 `refs/heads/master` 和 Compose 路径 `compose.portainer.yaml`。在 **Edit Git settings / Environment variables** 中将 `RDDNS_ADMIN_PASSWORD` 设为 `admin`，保留现有 `NAS_IP`、`RDDNS_PORT` 和包源变量，然后 **Pull and redeploy → Update**。这是源码构建项目，无需开启从镜像仓库重新拉取应用镜像的选项。
+
+本次更新会把容器名称从 Compose 自动生成的名称改为 `rddns`；Stack 名称和数据卷名称不变。更新过程会短暂中断服务，不要删除数据卷。若已有其他独立容器占用了 `rddns` 名称，先确认其用途再处理冲突。
+
+Compose 默认显式传入 `RDDNS_ADMIN_PASSWORD=admin`，优先于旧数据卷的随机密码文件，因此保留数据卷也可以使用新默认密码；若你已在 Stack 中配置其他密码，那个值仍然优先。直接运行 Python 且不设置此变量时，保留已有本地密码文件，新安装才使用 `admin`。
 
 ## Docker 部署
 
@@ -38,16 +46,12 @@
 ```sh
 cp .env.example .env
 # 若需要局域网访问，把 .env 中 RDDNS_BIND_IP 改成 NAS 的局域网 IP。
-# 可填写至少 12 字符的 RDDNS_ADMIN_PASSWORD；留空则首次启动自动生成。
+# 默认账户 admin / admin；可通过 RDDNS_ADMIN_PASSWORD 指定至少 12 字符的自定义密码。
 docker compose up -d --build
 docker compose logs rddns
 ```
 
-浏览器打开 `http://部署机器的IP:8080`，用户名为 **admin**。自动生成的初始密码会在首次启动日志显示；可再次查看：
-
-```sh
-docker compose exec rddns cat /data/admin-password
-```
+浏览器打开 `http://部署机器的IP:8080`，默认用户名和密码均为 **admin**。若设置了 `RDDNS_ADMIN_PASSWORD`，以该变量为准。
 
 默认 `127.0.0.1` 仅允许部署机器本地访问，地址为 `http://127.0.0.1:8080`。局域网访问请在 `.env` 设置该主机实际局域网 IP 后重新执行 `docker compose up -d`。
 
@@ -96,7 +100,7 @@ UPnP 是固件支持时的免登录途径，不能保证所有型号可用。202
 
 ## 数据与管理访问
 
-`/data` 使用持久化命名卷，含 `config.enc`（加密配置）、`encryption.key`（解密密钥）、`admin-password`（仅自动密码模式）。密钥文件权限为 0600。备份时应整体备份数据卷；能同时读取加密文件和密钥的人仍可解密配置，因此加密不能替代主机权限控制。
+`/data` 使用持久化命名卷，含 `config.enc`（加密配置）、`encryption.key`（解密密钥）、`admin-password`（未显式设置密码变量时使用的本地密码文件）。密钥文件权限为 0600。备份时应整体备份数据卷；能同时读取加密文件和密钥的人仍可解密配置，因此加密不能替代主机权限控制。
 
 密钥不通过 API 回显，密码框留空保留旧值；输入新值保存可替换。不要执行 `docker compose down -v`，这会删除配置卷。最近活动和运行状态只保留在内存，重启后重新检查；配置与启用状态会恢复。
 

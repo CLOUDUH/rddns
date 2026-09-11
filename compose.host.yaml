@@ -1,6 +1,7 @@
 # Linux / NAS host networking improves SSDP discovery. Use instead of compose.yaml.
 services:
   rddns:
+    container_name: rddns
     build:
       context: .
       args:
@@ -12,7 +13,7 @@ services:
     environment:
       RDDNS_HOST: ${RDDNS_BIND_IP:-127.0.0.1}
       RDDNS_PORT: 8080
-      RDDNS_ADMIN_PASSWORD: ${RDDNS_ADMIN_PASSWORD:-}
+      RDDNS_ADMIN_PASSWORD: ${RDDNS_ADMIN_PASSWORD:-admin}
     read_only: true
     tmpfs:
       - /tmp:size=16m,mode=1777

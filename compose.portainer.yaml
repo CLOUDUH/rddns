@@ -2,6 +2,7 @@
 # Required environment variable: NAS_IP = Docker host's LAN IPv4 address.
 services:
   rddns:
+    container_name: rddns
     build:
       context: .
       args:
@@ -11,7 +12,7 @@ services:
     environment:
       RDDNS_HOST: ${NAS_IP:?Set NAS_IP to the Docker host LAN IPv4 address}
       RDDNS_PORT: ${RDDNS_PORT:-8080}
-      RDDNS_ADMIN_PASSWORD: ${RDDNS_ADMIN_PASSWORD:-}
+      RDDNS_ADMIN_PASSWORD: ${RDDNS_ADMIN_PASSWORD:-admin}
     volumes:
       - rddns-data:/data
     read_only: true

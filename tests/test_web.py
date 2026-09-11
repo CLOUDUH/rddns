@@ -293,3 +293,42 @@ def test_missing_encryption_key_fails_closed(tmp_path):
         Store(tmp_path)
     assert (tmp_path/'config.enc').read_bytes() == before
     assert not (tmp_path/'encryption.key').exists()
+
+
+def basic(password):
+    return {'Authorization': 'Basic ' + base64.b64encode(('admin:' + password).encode()).decode()}
+
+
+def test_default_admin_password_persists(tmp_path, monkeypatch):
+    monkeypatch.delenv('RDDNS_ADMIN_PASSWORD', raising=False)
+    app = create_app(tmp_path, start_worker=False)
+    assert app.test_client().get('/api/config', headers=basic('admin')).status_code == 200
+    assert app.test_client().get('/api/config', headers=basic('wrong')).status_code == 401
+    assert (tmp_path/'admin-password').read_text() == 'admin'
+    restarted = create_app(tmp_path, start_worker=False)
+    assert restarted.test_client().get('/api/config', headers=basic('admin')).status_code == 200
+
+
+def test_env_admin_overrides_old_password_without_losing_config(tmp_path, monkeypatch):
+    store = Store(tmp_path)
+    store.save(configured())
+    (tmp_path/'admin-password').write_text('previous-random-password')
+    monkeypatch.setenv('RDDNS_ADMIN_PASSWORD', 'admin')
+    app = create_app(tmp_path, start_worker=False)
+    client = app.test_client()
+    assert client.get('/api/config', headers=basic('admin')).status_code == 200
+    assert client.get('/api/config', headers=basic('previous-random-password')).status_code == 401
+    assert app.extensions['rddns'].store.config['access_secret'] == 'test-secret'
+
+
+def test_direct_run_preserves_existing_password(tmp_path, monkeypatch):
+    monkeypatch.delenv('RDDNS_ADMIN_PASSWORD', raising=False)
+    (tmp_path/'admin-password').write_text('previous-random-password')
+    app = create_app(tmp_path, start_worker=False)
+    assert app.test_client().get('/api/config', headers=basic('previous-random-password')).status_code == 200
+    assert app.test_client().get('/api/config', headers=basic('admin')).status_code == 401
+
+
+def test_short_custom_password_rejected(tmp_path):
+    with pytest.raises(ValueError, match='自定义管理密码'):
+        create_app(tmp_path, admin_password='short', start_worker=False)

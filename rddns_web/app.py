@@ -1,7 +1,5 @@
 import hmac
 import os
-import secrets
-from pathlib import Path
 
 from flask import Flask, jsonify, request
 from .config import Store, atomic_write
@@ -16,11 +14,11 @@ def create_app(directory=None, admin_password=None, start_worker=True):
         if password_file.exists():
             password = password_file.read_text().strip()
         else:
-            password = secrets.token_urlsafe(24)
+            password = 'admin'
             atomic_write(password_file, password.encode())
             print('RDDNS 初始管理账户：admin；初始密码：' + password, flush=True)
-    if len(password) < 12:
-        raise ValueError('管理密码至少需要 12 个字符')
+    if password != 'admin' and len(password) < 12:
+        raise ValueError('自定义管理密码至少需要 12 个字符（默认 admin 除外）')
     service = Service(store)
     app = Flask(__name__, static_folder='static', static_url_path='/static')
     app.config['MAX_CONTENT_LENGTH'] = 32 * 1024

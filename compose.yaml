@@ -1,5 +1,6 @@
 services:
   rddns:
+    container_name: rddns
     build:
       context: .
       args:
@@ -10,7 +11,7 @@ services:
     volumes:
       - rddns-data:/data
     environment:
-      RDDNS_ADMIN_PASSWORD: ${RDDNS_ADMIN_PASSWORD:-}
+      RDDNS_ADMIN_PASSWORD: ${RDDNS_ADMIN_PASSWORD:-admin}
     read_only: true
     tmpfs:
       - /tmp:size=16m,mode=1777
