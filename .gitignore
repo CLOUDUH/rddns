@@ -146,3 +146,6 @@ $RECYCLE.BIN/
 config.json
 
 .venv
+# Web service credentials and local state
+/data/
+.pytest_cache/

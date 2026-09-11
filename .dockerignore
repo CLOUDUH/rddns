@@ -1,0 +1,5 @@
+*
+!requirements.txt
+!rddns_web/
+!rddns_web/**
+rddns_web/**/__pycache__
