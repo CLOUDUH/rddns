@@ -1,40 +1,23 @@
 ---
-name: debug
-about: 出错和调试
-title: "[debug]"
+name: Bug report
+about: Web 服务或部署问题
+title: "[bug]"
 labels: bug
 assignees: ''
-
 ---
 
-## **描述问题 (Describe the bug)**
+## 问题与复现步骤
 
-<!--  如果存在相同问题直接评论在相关问题下，不用新开issue  -->
+## 环境
 
+- Git 提交版本：
+- 部署方式（Portainer / Docker Compose / Python）：
+- 系统和 Docker / Portainer 版本：
+- TP-LINK 型号、固件和取址模式：
+- DNS 服务商：
 
-## 版本信息 (version info)
+## 错误信息
 
-* DDNS Version: 
-* OS Version： 
-* Type(运行方式): Binary/Python2/Python3
-* related issues (相关问题): 
+粘贴网页状态或容器日志，删除密码、DNS 密钥、订阅地址及其他私人信息。
 
-## **复现步骤 (To Reproduce)**
-
-
-### 配置文件 (config file)
-<!--  remove your id and token, 注意打码  -->
-```json
-{
-}
-```
-
-### 调试输出 (debug output)
-<!--  set debug: true in config, 配置文件debug 设置为true 可打印详细日志  -->
-```sh
-粘贴输出日志
-paste out put here
-```
-
-## 补充说明 (Additional context)
-<!-- Add any other context about the problem here. -->
+## 预期行为

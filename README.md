@@ -118,7 +118,7 @@ PORT=18080 .venv/bin/python run.py
 
 新服务入口为 `python -m rddns_web.app` 或 `python run.py`。不要开启多个 worker / 多个实例共享同一数据卷；每个进程包含一个独立调度器。
 
-原 `run.py` 保存于 `legacy/run.py` 供查阅，旧 `dns/`、`util/` 和打包文件保留作历史参考，不会进入新 Docker 镜像。新版不读取旧 `config.json`，请在网页迁移其路由器、rpwd 和 DNS 配置；旧 CLI 参数及旧 cron/systemd 启动方式不再适用。旧服务商中除阿里云和 Cloudflare 之外的后端尚未迁移。
+当前目录只保留 Web 服务、测试及 Docker/Portainer 部署文件。旧 CLI、DNS 模块、schema、PyInstaller/Python 2 打包和定时任务脚本已移除，可从 Git 历史查看。新版不读取旧 `config.json`；迁移时在网页填写路由器、rpwd 和 DNS 配置。
 
 CI 执行 Python 测试、Compose 校验、镜像构建和容器重启持久化测试；手动打包 workflow 仅输出镜像文件，不推送镜像仓库。代码审阅结果及验证边界见 [docs/REVIEW.md](docs/REVIEW.md)。
 

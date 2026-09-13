@@ -6,7 +6,7 @@
 
 | 问题 | 原位置 | 新实现 |
 | --- | --- | --- |
-| 登录失败先读取 stok，可能 KeyError；返回 -1 仍可能被当作有效 IP | 原 run.py 的 login_router / get_ip / update_ip，现保存在 legacy/run.py | 明确错误类型；严格 IPv4 校验；取址失败不调用 DNS |
+| 登录失败先读取 stok，可能 KeyError；返回 -1 仍可能被当作有效 IP | 原 run.py 的 login_router / get_ip / update_ip，可从 Git 历史查看 | 明确错误类型；严格 IPv4 校验；取址失败不调用 DNS |
 | 多域名任意一个成功即写 IP 缓存，后续可能跳过失败域名 | 原 update_ip | 每域名单独报告，每轮重新核对服务商，不共用成功缓存 |
 | IPv4 WAN 地址被 IPv6 更新路径复用 | 原 update_ip('6') | 新版只提供 A / IPv4，避免写入错误 AAAA |
 | 网络请求无超时、路由器请求可能继承代理 | 原 requests.post 和旧 DNS HTTPSConnection | 有限连接/读超时、禁止重定向，路由器连接不继承代理 |
@@ -15,7 +15,7 @@
 | 手工编辑 JSON、抓 rpwd，部署依赖老 Alpine/PyInstaller 和外部调度 | 原 README、Dockerfile、entrypoint.sh | 网页配置、自动读取固件编码常量、常驻 Waitress 和后台调度、Compose 持久化卷 |
 | CI 仍自动推送 NewFuture 镜像/PyPI，且使用 Python 2 打包路径 | 原 workflows | 替换为测试/镜像 smoke test；可手动导出镜像 artifact，不发布到外部仓库 |
 
-旧模块仅作历史参考，不在 Docker 镜像内；新入口是 rddns_web.app。没有把所有历史 DNS 服务商直接接入常驻服务，避免保留其未经验证的全局缓存及错误处理。
+旧模块已从当前目录移除，历史版本保存在 Git 中；新入口是 rddns_web.app。没有把所有历史 DNS 服务商直接接入常驻服务，避免保留其未经验证的全局缓存及错误处理。
 
 ## 已完成验证
 
@@ -41,3 +41,7 @@
 - 阿里云记录查询（COMBINATION 是 RRKeyWord 等字段精确组合匹配模式）：https://help.aliyun.com/zh/dns/api-alidns-2015-01-09-describedomainrecords
 - Cloudflare DNS Records：https://developers.cloudflare.com/api/resources/dns/subresources/records/
 - Waitress / Flask 部署：https://flask.palletsprojects.com/en/stable/deploying/waitress/
+
+## 2026-09-13 本地归档整理
+
+移除旧 CLI、DNS/缓存工具、schema、Python 2/PyInstaller 打包与定时任务文件，保留当前 Web 服务、54 项测试、Docker/Portainer 部署配置、文档和完整 Git 历史。合并重复工作目录并清除虚拟环境、Python/pytest 缓存与本次开发临时数据。上述早期验证记录保留其当时的时间范围，不代表当前远程部署状态。
