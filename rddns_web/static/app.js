@@ -1,7 +1,7 @@
 'use strict';
 const $ = id => document.getElementById(id);
 const form = $('config');
-let loaded = false, dirty = false, lastPhase = null;
+let loaded = false, dirty = false, lastPhase = null, eventsVersion = null;
 const phases = {idle:'等待检查',queued:'任务排队中',reading:'读取 WAN 中',syncing:'同步解析中',tested:'取址测试成功',success:'同步正常',partial_error:'存在同步失败',error:'检查失败'};
 const states = {updated:'已更新',unchanged:'记录已一致',error:'失败'};
 function notice(text, error=false){$('notice').textContent=text;$('notice').className=error?'error':'';$('notice').hidden=false;}
@@ -9,7 +9,6 @@ async function api(path, method='GET', body){
  const options={method,cache:'no-store',headers:{'X-RDDNS-Request':'1'}};
  if(body!==undefined){options.headers['Content-Type']='application/json';options.body=JSON.stringify(body);}
  const r=await fetch(location.origin+'/api/'+path,options);
- if(r.status===401)throw new Error('登录已失效，请刷新页面重新登录');
  const data=await r.json(); if(!r.ok)throw new Error(data.error||'请求失败');return data;
 }
 function provider(){const ali=form.elements.provider.value==='alidns';$('ali-fields').hidden=!ali;$('cf-fields').hidden=ali;}
@@ -59,9 +58,18 @@ async function refresh(){
  const title=document.createElement('b');title.textContent=r.domain;
  const detail=document.createElement('span');detail.textContent=r.error||`${r.ip} · ${states[r.state]||r.state}`;
  el.append(title,detail);$('records').append(el);}
- $('events').replaceChildren();
- if(!s.events.length){const li=document.createElement('li');li.className='empty';li.textContent='等待首次检查';$('events').append(li);}
- for(const event of s.events){const li=document.createElement('li');const t=document.createElement('time');t.textContent=stamp(event.time);li.append(t,document.createTextNode(event.message));$('events').append(li);}
+ const version=JSON.stringify(s.events);
+ if(version!==eventsVersion){
+  const list=$('events'), top=list.getBoundingClientRect().top, previousScroll=list.scrollTop;
+  const anchor=previousScroll>0?Array.from(list.children).find(el=>el.getBoundingClientRect().bottom>top):null;
+  const anchorKey=anchor?.dataset.event, anchorOffset=anchor?anchor.getBoundingClientRect().top-top:0;
+  list.replaceChildren();
+  if(!s.events.length){const li=document.createElement('li');li.className='empty';li.textContent='等待首次检查';list.append(li);}
+  for(const event of s.events){const li=document.createElement('li');li.dataset.event=JSON.stringify(event);const t=document.createElement('time');t.textContent=stamp(event.time);li.append(t,document.createTextNode(event.message));list.append(li);}
+  list.scrollTop=previousScroll;
+  if(anchorKey){const retained=Array.from(list.children).find(el=>el.dataset.event===anchorKey);if(retained)list.scrollTop+=retained.getBoundingClientRect().top-list.getBoundingClientRect().top-anchorOffset;}
+  eventsVersion=version;
+ }
  }catch(err){$('connection').textContent='○ 服务连接中断';notice(err.message,true);}
 }
 async function poll(){await refresh();setTimeout(poll,2000);}

@@ -1,4 +1,3 @@
-import base64
 import copy
 import json
 import stat
@@ -15,9 +14,7 @@ from rddns_web.router import (RouterError, valid_ip, router_url, login_ip,
 from rddns_web.providers import DNSError, sync_ali, sync_cf, alidns
 from rddns_web.service import Service
 
-PASSWORD = 'test-admin-password-123'
-HEADERS = {'Authorization':'Basic ' + base64.b64encode(('admin:' + PASSWORD).encode()).decode(),
-           'X-RDDNS-Request':'1'}
+HEADERS = {'X-RDDNS-Request':'1'}
 
 
 def configured():
@@ -27,18 +24,19 @@ def configured():
 
 @pytest.fixture
 def app(tmp_path):
-    return create_app(tmp_path, PASSWORD, start_worker=False)
+    return create_app(tmp_path, start_worker=False)
 
 
-def test_auth_and_csrf(app):
+def test_no_login_required_and_mutations_keep_request_checks(app):
     client = app.test_client()
-    assert client.get('/healthz').status_code == 200
-    for path in ('/','/api/config','/api/status','/static/app.js'):
-        assert client.get(path).status_code == 401
-    assert client.get('/', headers=HEADERS).status_code == 200
-    assert client.put('/api/config', json={}, headers={'Authorization':HEADERS['Authorization']}).status_code == 403
+    for path in ('/', '/healthz', '/api/config', '/api/status', '/static/app.js', '/static/style.css'):
+        response = client.get(path)
+        assert response.status_code == 200
+        assert 'WWW-Authenticate' not in response.headers
+    assert client.put('/api/config', json={}).status_code == 403
     assert client.put('/api/config', json={}, headers=dict(HEADERS, **{'Sec-Fetch-Site':'cross-site'})).status_code == 403
-    assert client.get('/api/status', headers=HEADERS).headers['Cache-Control'] == 'no-store'
+    assert client.put('/api/config', json={'interval':120}, headers=HEADERS).status_code == 200
+    assert client.get('/api/status').headers['Cache-Control'] == 'no-store'
 
 
 def test_persistence_encrypted_and_no_secret_echo(app, tmp_path):
@@ -295,34 +293,18 @@ def test_missing_encryption_key_fails_closed(tmp_path):
     assert not (tmp_path/'encryption.key').exists()
 
 
-def basic(password):
-    return {'Authorization': 'Basic ' + base64.b64encode(('admin:' + password).encode()).decode()}
-
-
-def test_default_admin_password(tmp_path):
-    app = create_app(tmp_path, start_worker=False)
-    assert app.test_client().get('/api/config', headers=basic('admin')).status_code == 200
-    assert app.test_client().get('/api/config', headers=basic('wrong')).status_code == 401
-    assert not (tmp_path/'admin-password').exists()
-
-
-def test_upgrade_ignores_old_password_but_preserves_config(tmp_path, monkeypatch):
+def test_upgrade_keeps_config_and_ignores_legacy_credentials(tmp_path, monkeypatch):
     store = Store(tmp_path)
     store.save(configured())
     (tmp_path/'admin-password').write_text('previous-random-password')
     monkeypatch.setenv('RDDNS_ADMIN_PASSWORD', 'previous-env-password')
     app = create_app(tmp_path, start_worker=False)
-    client = app.test_client()
-    assert client.get('/api/config', headers=basic('admin')).status_code == 200
-    assert client.get('/api/config', headers=basic('previous-random-password')).status_code == 401
-    assert client.get('/api/config', headers=basic('previous-env-password')).status_code == 401
+    response = app.test_client().get('/api/config')
+    assert response.status_code == 200
+    assert 'WWW-Authenticate' not in response.headers
     assert app.extensions['rddns'].store.config['access_secret'] == 'test-secret'
+    assert response.json['access_secret'] == ''
     assert (tmp_path/'admin-password').read_text() == 'previous-random-password'
-
-
-def test_short_custom_password_rejected(tmp_path):
-    with pytest.raises(ValueError, match='自定义管理密码'):
-        create_app(tmp_path, admin_password='short', start_worker=False)
 
 
 @pytest.mark.parametrize('value,expected', [(None,8080),('18080',18080)])

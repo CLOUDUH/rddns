@@ -1,4 +1,3 @@
-import hmac
 import os
 from pathlib import Path
 
@@ -7,11 +6,8 @@ from .config import Store
 from .service import Service
 
 
-def create_app(directory=None, admin_password=None, start_worker=True):
+def create_app(directory=None, start_worker=True):
     store = Store(directory or ('/data' if Path('/data').is_dir() else './data'))
-    password = admin_password if admin_password is not None else 'admin'
-    if password != 'admin' and len(password) < 12:
-        raise ValueError('自定义管理密码至少需要 12 个字符（默认 admin 除外）')
     service = Service(store)
     app = Flask(__name__, static_folder='static', static_url_path='/static')
     app.config['MAX_CONTENT_LENGTH'] = 32 * 1024
@@ -19,11 +15,6 @@ def create_app(directory=None, admin_password=None, start_worker=True):
 
     @app.before_request
     def guard():
-        if request.path == '/healthz' and request.method == 'GET':
-            return None
-        auth = request.authorization
-        if not auth or auth.type.lower() != 'basic' or not hmac.compare_digest((auth.username or '').encode(), b'admin') or not hmac.compare_digest((auth.password or '').encode(), password.encode()):
-            return ('需要管理账户登录', 401, {'WWW-Authenticate':'Basic realm="RDDNS", charset="UTF-8"'})
         if request.method in ('POST','PUT','PATCH','DELETE'):
             if request.headers.get('X-RDDNS-Request') != '1' or not request.is_json:
                 return jsonify(error='请求校验失败，请从管理页面操作'), 403

@@ -6,7 +6,7 @@
 - 配置：路由器地址、账户记录、普通密码或旧版 `rpwd`；阿里云 DNS / Cloudflare。
 - 状态：WAN IP、取址来源、下次检查、最近成功、逐域名结果、最近 100 条活动，每 2 秒刷新。
 - 控制：保存配置、仅测试取址、立即同步、启用或暂停自动同步。
-- 运行：单进程后台调度、请求超时、配置加密与原子落盘、管理登录、非 root 容器、健康检查。
+- 运行：单进程后台调度、请求超时、配置加密与原子落盘、非 root 容器、健康检查。
 
 ## Portainer 从 Git URL 部署
 
@@ -27,7 +27,7 @@ PORT=18080
 
 不填时端口为 8080。点击 **Deploy the stack**，Portainer 会拉取源码并构建镜像。构建默认使用清华 Python 镜像，失败自动回退 PyPI，无需配置包源变量。Docker 主机仍需能访问 GitHub、Docker Hub 和至少一个 Python 包源。
 
-启动后访问 `http://虚拟机或NAS的IP:18080`，默认用户名和密码均为 **admin**，容器名为 **rddns**。服务监听 `0.0.0.0`，无需提供 `NAS_IP`。主机 IP 由操作系统管理，浏览器通过该地址访问网页；**需要读取 WAN 的路由器地址**在网页中填写。
+启动后访问 `http://虚拟机或NAS的IP:18080`，无需输入用户名或密码，容器名为 **rddns**。服务监听 `0.0.0.0`，无需提供 `NAS_IP`。主机 IP 由操作系统管理，浏览器通过该地址访问网页；**需要读取 WAN 的路由器地址**在网页中填写。
 
 此配置使用 Linux host 网络，无需端口映射。Docker Swarm 不支持这里的源码构建方式；本配置适用于 Docker Standalone。官方入口说明：[Portainer Git repository stacks](https://docs.portainer.io/user/docker/stacks/add#option-3-git-repository)。
 
@@ -36,7 +36,7 @@ PORT=18080
 1. 打开原来的 `rddns` Stack，保持分支 `refs/heads/master` 和 Compose 路径 `compose.portainer.yaml`。
 2. 在 **Edit Git settings / Environment variables** 中删除旧的 `RDDNS_PORT`、`NAS_IP`、`RDDNS_ADMIN_PASSWORD`、`RDDNS_PIP_INDEX_URL` 等 RDDNS 部署变量，只保留 `PORT=18080`。Portainer 自己的 HTTP_PROXY/HTTPS_PROXY 属于另一个容器，不要删除。
 3. 保存设置，执行 **Pull and redeploy → Update**，等待源码重新构建与容器启动。
-4. 继续访问原来的主机地址和端口，使用 `admin / admin` 登录。浏览器若缓存旧凭据，可用无痕窗口重新登录。
+4. 继续访问原来的主机地址和端口，直接打开管理页面即可，无需登录。
 
 保持原 Stack 和数据卷，已保存的路由器与 DNS 配置会保留。旧 `admin-password` 文件不会再用于管理登录，也无需手工删除。旧 `RDDNS_*` 环境变量不再控制本服务。
 
@@ -97,9 +97,9 @@ UPnP 是固件支持时的免登录途径，不能保证所有型号可用。202
 
 `/data` 使用持久化命名卷，含 `config.enc`（加密配置）、`encryption.key`（解密密钥）。密钥文件权限为 0600。备份时应整体备份数据卷；能同时读取加密文件和密钥的人仍可解密配置，因此加密不能替代主机权限控制。
 
-密钥不通过 API 回显，密码框留空保留旧值；输入新值保存可替换。不要执行 `docker compose down -v`，这会删除配置卷。最近活动和运行状态只保留在内存，重启后重新检查；配置与启用状态会恢复。
+密钥不通过 API 回显，密码框留空保留旧值；输入新值保存可替换。不要执行 `docker compose down -v`，这会删除配置卷。最近活动最多保留 100 条，区域高度上限为 320px，超过后在区域内滚动，自动刷新时保留阅读位置。活动和运行状态只保留在内存，重启后重新检查；配置与启用状态会恢复。
 
-网页登录采用 HTTP Basic。局域网 HTTP 不提供传输加密；远程访问应通过 HTTPS 反向代理或可信 VPN，不要直接把 8080 暴露到公网。反向代理必须保留 Authorization 头。浏览器可能缓存登录凭据，需要退出时关闭对应浏览器会话。当前版本的管理登录为 `admin / admin`。
+管理页面及 API 无需账号密码，能访问服务的设备可以查看状态并修改配置。浏览器写请求继续校验专用请求头和 JSON 格式；已保存的路由器密码和 DNS 密钥仍不会回显。
 
 ## 本地运行与测试
 
