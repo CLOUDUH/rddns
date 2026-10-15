@@ -33,6 +33,10 @@ def create_app(directory=None, start_worker=True):
     def index():
         return app.send_static_file('index.html')
 
+    @app.get('/favicon.ico')
+    def favicon():
+        return app.send_static_file('favicon.ico')
+
     @app.get('/healthz')
     def health():
         alive = not start_worker or service.thread.is_alive()
